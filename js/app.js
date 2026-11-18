@@ -869,7 +869,13 @@
     nav.classList.remove('hidden');
     render();
     if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+      var hadController = !!navigator.serviceWorker.controller, reloaded = false;
       navigator.serviceWorker.register('sw.js').catch(function () { /* オフライン機能なしで動く */ });
+      // 新しい版が届いたら1回だけ読み込み直す（調理中・レシピを見ている途中はしない）
+      navigator.serviceWorker.addEventListener('controllerchange', function () {
+        if (!hadController || reloaded || V.cook || V.detail) return;
+        reloaded = true; location.reload();
+      });
     }
   }
   Promise.all(FILES.map(function (f) { return fetch('data/' + f + '.json').then(function (r) { if (!r.ok) throw new Error(f); return r.json(); }); }))
