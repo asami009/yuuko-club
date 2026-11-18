@@ -388,8 +388,8 @@
     h += '<div class="card"><h2>調理中の質問にGeminiを使う（使わなくてもOK）</h2>';
     h += '<p class="small">GoogleのGemini（AI）の無料キーを入れると、調理モードの「困った？」で、自由な質問にその場で答えが返ってきます。入れなくても、アプリのほかの機能はすべて使えます。</p>';
     h += '<details class="acc"><summary>使う前に知っておくこと</summary><ul class="bul small"><li>無料で使えます。ただし無料の使い方では、送った質問と答えをGoogleがサービス改善に使い、人が読むこともあります（Googleの規約）。名前や住所などは書かないでください。このアプリが送るのは、料理名・材料・いまの手順・質問だけです。</li><li>1日に使える回数に上限があります。上限に達してもアプリのほかの機能は止まりません。</li><li>Googleの規約で、キーを作って使えるのは18歳以上です。</li><li>インターネットにつながっているときだけ使えます。</li><li>キーはこのスマホの中だけに保存され、データの書き出しには入りません。</li><li>使われるのは、キーを作った人のGoogleアカウントの無料の回数です（ほかの人のキーを借りて貼った場合は、その人の回数が減ります）。</li></ul></details>';
-    h += '<details class="acc"><summary>キーの作り方（5分くらい）</summary><ol class="bul small"><li><a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio のキーのページ</a>を開き、自分のGoogleアカウントでログインする</li><li>「APIキーを作成」を押す（はじめての人は、利用規約に同意する画面が出ます）</li><li>表示されたキー（AIza…で始まる長い文字）をコピーする</li><li>下の欄に貼り付けて「保存」を押し、「つながるか試す」で確認する</li></ol><p class="muted">料金の設定（お支払い方法の登録）はしないでください。登録しなければ無料の範囲だけで使われます。</p></details>';
-    h += '<div class="row" style="margin-top:8px"><input class="input grow" id="gkeyIn" type="password" autocomplete="off" placeholder="' + (gk ? '保存済み（変えるときだけ入力）' : 'ここにキーを貼り付け') + '"><button class="btn" data-act="saveGkey">保存</button></div>';
+    h += '<details class="acc"><summary>キーの作り方（5分くらい）</summary><ol class="bul small"><li><a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio のキーのページ</a>を開き、自分のGoogleアカウントでログインする</li><li>「APIキーを作成」を押す（はじめての人は、利用規約に同意する画面が出ます）</li><li>表示されたキー（英数字が続く長い文字）を、キーの横のコピーボタンでコピーする</li><li>下の欄に貼り付けて「保存」を押し、「つながるか試す」で確認する</li></ol><p class="muted">料金の設定（お支払い方法の登録）はしないでください。登録しなければ無料の範囲だけで使われます。</p></details>';
+    h += '<div class="row" style="margin-top:8px"><input class="input grow" id="gkeyIn" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" style="-webkit-text-security:disc" placeholder="' + (gk ? '保存済み（変えるときだけ入力）' : 'ここにキーを貼り付け') + '"><button class="btn" data-act="saveGkey">保存</button></div>';
     h += '<div class="row" style="margin-top:8px">' + (gk ? '<span class="tag good">キー保存済み</span><button class="btn small" data-act="testGkey">つながるか試す</button><button class="btn small danger" data-act="delGkey">キーを消す</button>' : '<span class="muted">キーは入っていません</span>') + '</div></div>';
     h += '<div class="card"><h2>データの保存</h2><p class="small">記録・お気に入り・登録したレシピ・設定は、このスマホのブラウザの中だけに保存されます。機種変更やブラウザのデータ削除で消えるので、ときどき書き出しておくと安心です。' + (memoryOnly ? '<br><b>※いまはこのブラウザに保存できない状態です（プライベートブラウズなど）。</b>' : '') + '</p><div class="row"><button class="btn" data-act="export">書き出す（ファイル）</button><button class="btn" data-act="exportCopy">書き出す（コピー）</button><button class="btn" data-act="import">読み込む</button></div><input type="file" id="importFile" accept="application/json,.json" class="hidden"></div>';
     h += '<div class="card"><h2>このアプリについて</h2><ul class="bul small">' +
@@ -593,6 +593,17 @@
   function lsGet(k) { try { return localStorage.getItem(k) || ''; } catch (e) { return (V.mem && V.mem[k]) || ''; } }
   function lsSet(k, v) { try { if (v) localStorage.setItem(k, v); else localStorage.removeItem(k); } catch (e) { V.mem = V.mem || {}; V.mem[k] = v; } }
   function hasGemini() { return !!lsGet(GKEY); }
+  // 貼り付けたキーをきれいにする（空白・改行・全角・かぎかっこを取り除く）。正しいかは「つながるか試す」で確かめる
+  function cleanKey(raw) {
+    var t = String(raw || '');
+    if (t.normalize) t = t.normalize('NFKC');
+    if (/…|\.\.\./.test(t)) return { key: '', why: 'キーの一部が「…」で隠れた表示をコピーしたようです。Google AI Studio のキーの横にあるコピーボタンで、もう一度コピーしてください' };
+    t = t.replace(/[\s\u200b\u3000「」『』"'`]/g, '');
+    var m = t.match(/[A-Za-z0-9_\-]{20,}/g);
+    if (!m) return { key: '', why: 'キーが短すぎるか、キー以外の文字が入っているようです。Google AI Studio のコピーボタンで、もう一度コピーしてください' };
+    m.sort(function (a, b) { return b.length - a.length; });
+    return { key: m[0], why: '' };
+  }
   function geminiAsk(prompt) {
     var key = lsGet(GKEY);
     if (!key) return Promise.reject({ code: 'nokey' });
@@ -810,7 +821,13 @@
       }
       case 'pickFile': { var fileEl = $('#importFile'); if (fileEl) fileEl.click(); break; }
       case 'importPaste': { var tx = ($('#importText') || {}).value || ''; closeModal(); if (tx.trim()) importText(tx); break; }
-      case 'saveGkey': { var kv = (($('#gkeyIn') || {}).value || '').trim(); if (!kv) { toast('キーを貼り付けてください'); break; } if (!/^[A-Za-z0-9_\-]{20,}$/.test(kv)) { toast('キーの形が違うようです。コピーし直してください', 3000); break; } lsSet(GKEY, kv); lsSet(GMODEL, ''); render(); toast('保存しました。「つながるか試す」で確認してください', 3000); break; }
+      case 'saveGkey': {
+        var raw = (($('#gkeyIn') || {}).value || '');
+        var kv = cleanKey(raw);
+        if (!kv.key) { toast(raw.trim() ? kv.why : 'キーを貼り付けてください', 4500); break; }
+        lsSet(GKEY, kv.key); lsSet(GMODEL, ''); render();
+        toast('保存しました（' + kv.key.slice(0, 4) + '…で始まる' + kv.key.length + '文字）。「つながるか試す」で確認してください', 4500); break;
+      }
       case 'delGkey': if (confirm('Geminiのキーをこのスマホから消しますか？')) { lsSet(GKEY, ''); lsSet(GMODEL, ''); render(); toast('キーを消しました'); } break;
       case 'testGkey': toast('確認しています…'); geminiAsk('動作確認です。「つながりました」とだけ返してください。').then(function (res) { toast('つながりました（' + res.model + '）', 3500); }, function (e) { alert(geminiError(e)); }); break;
       case 'resetAll': if (confirm('記録・お気に入り・登録したレシピ・設定をすべて消します。元に戻せません。よろしいですか？')) { try { localStorage.removeItem(KEY); localStorage.removeItem(GKEY); localStorage.removeItem(GMODEL); } catch (e) { /* なにもしない */ } S = defaults(); V.results = null; save(); setTab('home'); toast('すべて消しました'); } break;
