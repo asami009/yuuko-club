@@ -1,0 +1,16 @@
+{
+  "name": "ユウコクラブ",
+  "short_name": "ユウコクラブ",
+  "description": "冷蔵庫の食材・人数・好みから夕飯の献立とレシピを考えるアプリ",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#fbf6ee",
+  "theme_color": "#fbf6ee",
+  "lang": "ja",
+  "icons": [
+    {"src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png"},
+    {"src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png"},
+    {"src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml"}
+  ]
+}
