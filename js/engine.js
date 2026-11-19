@@ -1213,8 +1213,11 @@
   function historyScore(info, key, ctx) {
     var h = ctx.history || []; var today = ctx.today || new Date().toISOString().slice(0, 10);
     var s = 0, block = false;
-    h.forEach(function (x) {
+    h.forEach(function (x0) {
+      var x = x0;
+      if (x0.manual && x0.mainId && info.mainId && x0.mainId !== info.mainId && family(x0.mainId) && family(x0.mainId) === family(info.mainId)) { x = {}; Object.keys(x0).forEach(function (k) { x[k] = x0[k]; }); x.mainId = info.mainId; }
       var d = daysAgo(x.date, today); if (d < 0) d = 0;
+      if (x.manual) x = (function () { var y = {}; Object.keys(x).forEach(function (k) { y[k] = x[k]; }); y.rating = null; return y; })();
       if (x.rating === 'bad') { if (x.key === key) block = true; if (x.base && x.base === info.base) s -= 4; if (x.mainId && x.mainId === info.mainId && x.base === info.base) s -= 10; }
       if (x.rating === 'good') { if (x.key === key) s += 10; else if (x.base === info.base) s += 2; }
       if (x.rating === 'ok' && x.key === key) s += 1;
@@ -1222,6 +1225,7 @@
         if (x.key === key) s -= 40;
         if (x.mainId && x.mainId === info.mainId && x.base === info.base) s -= 25;
         if (d <= 3 && x.base === info.base) s -= 8;
+        if (d <= 3 && x.base === 'fried' && info.fried) s -= 8;
         if (d <= 3 && x.mainId && x.mainId === info.mainId) s -= 6;
         if (d <= 3 && info.amakara && x.amakara && (ctx.prefs && ctx.prefs.tastes && ctx.prefs.tastes.amakaraLimit)) s -= 6;
       }
@@ -1347,7 +1351,7 @@
     CLASSICS.forEach(function (C) {
       if (C.slot !== slot) return;
       var rc = buildClassic(C, ctx);
-      var info = recipeInfo(rc); info.base = rc.base; info.mainId = rc.mainId; info.genre = rc.genre;
+      var info = recipeInfo(rc); info.base = rc.base; info.mainId = rc.mainId; info.genre = rc.genre; info.fried = !!C.fried;
       if (excludedReason(info, ctx)) return;
       var hs = historyScore(info, rc.key, ctx); if (hs.block) return;
       var s = 0;
@@ -1482,6 +1486,68 @@
     if (k.kind === 'classic') return E.buildClassic(k.id, ctx);
     if (k.kind === 'user') { var U = (ctx.userRecipes || []).filter(function (u) { return u.id === k.id; })[0]; return U ? buildUser(U, ctx) : null; }
     return null;
+  };
+
+  // ---------- アプリ以外で作った料理の記録 ----------
+  var BASES = [['salt', '塩味'], ['shoyu', 'しょうゆ'], ['shoyu_sweet', '甘辛しょうゆ'], ['miso', 'みそ'], ['chinese', '中華'], ['western', 'コンソメ・洋風'],
+    ['cream', 'クリーム'], ['curry', 'カレー'], ['tomato', 'ケチャップ・トマト'], ['butter', 'バター'], ['spicy', 'ピリ辛'], ['sour', 'さっぱり（酢・ポン酢）'],
+    ['dashi', 'だし・和風'], ['fried', '揚げ物'], ['other', 'その他']];
+  var MAINS = [['pork_koma', '豚肉'], ['chicken_momo', '鶏肉'], ['beef_koma', '牛肉'], ['mince_mix', 'ひき肉'], ['salmon', '魚'], ['shrimp', 'えび'],
+    ['tofu_momen', '豆腐・厚揚げ'], ['egg', '卵'], ['wiener', 'ウインナー・ハム'], ['', '野菜だけ・ほか']];
+  E.baseList = function () { return BASES.slice(); };
+  E.mainList = function () { return MAINS.slice(); };
+  E.baseLabel = function (b) { var f = BASES.filter(function (x) { return x[0] === b; })[0]; return f ? f[1] : 'その他'; };
+  E.mainLabel = function (id) {
+    if (!id) return '野菜だけ・ほか';
+    var ex = MAINS.filter(function (x) { return x[0] === id; })[0]; if (ex) return ex[1];
+    if (/mince/.test(id)) return 'ひき肉';
+    var fam = family(id); var f = MAINS.filter(function (x) { return x[0] && family(x[0]) === fam; })[0]; return f ? f[1] : short(id);
+  };
+  E.mainChip = function (id) { if (!id) return ''; if (MAINS.some(function (x) { return x[0] === id; })) return id; if (/mince/.test(id)) return 'mince_mix'; var fam = family(id); var f = MAINS.filter(function (x) { return x[0] && family(x[0]) === fam; })[0]; return f ? f[0] : ''; };
+  // 料理名の言葉 → 味付け（上から順に見て、最初に当たったもの）
+  var FISH_RE = /シーフード|さんま|サンマ|秋刀魚|あじ|アジ|鯵|いわし|イワシ|鰯|ほっけ|ホッケ|かれい|カレイ|鰈|まぐろ|マグロ|鮪|かつお|カツオ|鰹|ししゃも|シシャモ|さわら|サワラ|鰆|たい|タイ|鯛|白身魚|魚介|海鮮|いか|イカ|たこ|タコ|あさり|しじみ|ほたて|ホタテ|帆立|かに|カニ|蟹|うなぎ|ウナギ|鰻|魚|刺身|焼き魚|煮付/;
+  var BASE_WORDS = [
+    ['other', /焼きそば|焼そば|焼きうどん|お好み焼|たこ焼|ソース/],
+    ['sour', /ぽん酢|ポン酢|南蛮|酢豚|甘酢|マリネ|酢の物|さっぱり煮|黒酢|酢じょうゆ|梅煮|梅/],
+    ['spicy', /麻婆|マーボー|まーぼー|ピリ辛|キムチ|担々|坦々|チゲ|エビチリ|えびチリ|豆板醤|ヤンニョム/],
+    ['curry', /カレー|かれー|タンドリー/],
+    ['cream', /クリーム|シチュー|グラタン|カルボナーラ|ドリア/],
+    ['tomato', /ケチャップ|ハンバーグ|オムライス|ナポリタン|ミートソース|トマト煮|ポークチャップ|チキンライス|ピザ|トマト/],
+    ['salt', /塩焼|塩だれ|ねぎ塩|塩味|塩こしょう|塩麹|[（(]塩[)）]/],
+    ['miso', /みそ|味噌|ちゃんちゃん|回鍋肉|ホイコーロー|豚汁|田楽/],
+    ['shoyu_sweet', /照り焼|照焼|生姜焼|しょうが焼|甘辛|煮付|すき焼|肉じゃが|親子丼|牛丼|他人丼|きんぴら|角煮|筑前煮|蒲焼|かば焼|佃煮|そぼろ|照り|焼き鳥|焼鳥|うな丼|うな重/],
+    ['chinese', /八宝菜|中華|オイスター|チンジャオ|青椒肉絲|あんかけ|餃子|ぎょうざ|ギョウザ|焼売|シュウマイ|春巻|炒飯|チャーハン|ラーメン|鶏ガラ|中華丼/],
+    ['butter', /バター|ムニエル|ソテー/],
+    ['western', /コンソメ|ポトフ|スープ煮|ロールキャベツ|ポタージュ|洋風/],
+    ['fried', /唐揚|からあげ|から揚|竜田|天ぷら|天麩羅|フライ|とんかつ|トンカツ|コロッケ|カツ(?!オ)|揚げ(?!浸)/],
+    ['salt', /焼き魚|塩/],
+    ['shoyu', /たたき|しょうゆ|醤油|ガーリック|ステーキ|焼肉|焼き肉|刺身|ポークソテー|しょう油|丼/],
+    ['dashi', /鍋|おでん|煮びたし|揚げ浸し|お吸い物|すまし汁|うどん|そば|雑炊|おひたし|和風|だし/]
+  ];
+  var MAIN_WORDS = [
+    ['mince_mix', /ひき肉|挽き肉|挽肉|ミンチ|ハンバーグ|餃子|ぎょうざ|ギョウザ|そぼろ|ミートソース|焼売|シュウマイ|麻婆|マーボー|タコライス|タコス/],
+    ['shrimp', /えび|エビ|海老/],
+    ['salmon', /鮭|さけ|サケ|しゃけ|サーモン/], ['saba', /さば|サバ|鯖/], ['buri', /ぶり|ブリ|鰤/], ['tara', /たら(?!こ)|タラ(?!コ)|鱈(?!子)/],
+    ['salmon', FISH_RE],
+    ['tofu_momen', /豆腐|厚揚げ|あつあげ|油揚げ/],
+    ['chicken_momo', /鶏|鳥|とり肉|チキン|親子|唐揚|からあげ|から揚|竜田|ささみ|焼き鳥|焼鳥|手羽/],
+    ['beef_koma', /牛(?!乳)|ビーフ|すき焼|ステーキ|焼肉|焼き肉/],
+    ['wiener', /ウインナー|ウィンナー|ソーセージ|ハム|ベーコン/],
+    ['pork_koma', /豚|ぶた|ポーク|とんかつ|トンカツ|カツ(?!オ)|生姜焼|しょうが焼|角煮|回鍋肉|酢豚/],
+    ['egg', /卵|たまご|玉子|オムライス|オムレツ|親子/]
+  ];
+  // 料理名から、味付け・主役・同じ定番レシピを推し量る
+  E.guessDish = function (name) {
+    var t = String(name || '');
+    var n = norm(t);
+    var hit = null;
+    CLASSICS.forEach(function (C) { var cn = norm(C.name.replace(/（.*?）/g, '')); if (!hit && cn && cn.length >= 3 && n.indexOf(cn) >= 0) hit = C; });
+    if (hit) return { base: hit.base, mainId: hit.ing[0].id, classicKey: 'classic|' + hit.id, genre: hit.genre, amakara: !!hit.amakara, slot: hit.slot, guessed: true };
+    var base = 'other', mainId = '';
+    for (var i = 0; i < BASE_WORDS.length; i++) if (BASE_WORDS[i][1].test(t)) { base = BASE_WORDS[i][0]; break; }
+    for (var j = 0; j < MAIN_WORDS.length; j++) if (MAIN_WORDS[j][1].test(t)) { mainId = MAIN_WORDS[j][0]; break; }
+    var genre = { chinese: '中', spicy: '中', western: '洋', cream: '洋', tomato: '洋', curry: '洋', butter: '洋' }[base] || '和';
+    return { base: base, mainId: mainId, classicKey: null, genre: genre, amakara: base === 'shoyu_sweet', slot: 'main', guessed: base !== 'other' || !!mainId };
   };
 
   // ---------- ChatGPTに貼る文 ----------

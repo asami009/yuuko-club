@@ -149,7 +149,7 @@
      "kid": ["豆板醤を入れる前に取り分けるので、子どもの分は辛くありません"],
      "subs": [{"from": "豚ひき肉", "to": "合いびき肉・鶏ひき肉"}, {"from": "木綿豆腐", "to": "絹ごし豆腐（なめらか。崩れやすいので下ゆでは1分）"}, {"from": "みそ", "to": "甜麺醤小さじ2（そのときは砂糖なし）"}, {"from": "豆板醤", "to": "なければ、大人は食卓で一味やラー油をかける"}]},
 
-    {"id": "c_karaage", "slot": "main", "method": "yaki", "name": "鶏の唐揚げ（揚げ焼き）", "genre": "和", "base": "shoyu", "amakara": false, "minutes": 35,
+    {"id": "c_karaage", "slot": "main", "method": "yaki", "fried": true, "name": "鶏の唐揚げ（揚げ焼き）", "genre": "和", "base": "shoyu", "amakara": false, "minutes": 35,
      "desc": "きつね色にカリッと揚げ焼きした、ひと口大の唐揚げ",
      "plate": {"dish": "plate", "items": ["chicken_momo"], "glaze": "#b87a3a", "shape": "karaage"},
      "ing": [{"id": "chicken_momo", "g": 300, "alt": ["chicken_mune"]}],

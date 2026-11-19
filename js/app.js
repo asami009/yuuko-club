@@ -136,6 +136,9 @@
       [['full', '主菜＋副菜＋汁物'], ['main_side', '主菜＋副菜'], ['main_soup', '主菜＋汁物'], ['main', '主菜だけ']].map(function (o) { return '<button class="pick ' + (S.style === o[0] ? 'on' : '') + '" data-act="style" data-v="' + o[0] + '">' + o[1] + '</button>'; }).join('') +
       '</div><h3>調理時間（1品あたり）</h3><div class="chips">' +
       [[null, 'こだわらない'], [20, '20分以内'], [30, '30分以内'], [45, '45分以内']].map(function (o) { return '<button class="pick ' + (S.maxMin === o[0] ? 'on' : '') + '" data-act="maxMin" data-v="' + (o[0] || '') + '">' + o[1] + '</button>'; }).join('') + '</div></div>';
+    h += '<div class="card"><h2 style="margin-bottom:4px">アプリ以外で作った日は？</h2><p class="muted" style="margin:0 0 8px">料理名を入れておくと、同じ味付けが続かないようにします（外食やお惣菜もOK）</p>' +
+      '<div class="row"><input class="input grow" id="manIn" placeholder="例：鮭の塩焼き" autocomplete="off" enterkeyhint="done"><button class="btn" data-act="manAdd">記録</button></div>' +
+      '<div class="chips" style="margin-top:8px">' + [[0, '今日'], [1, 'きのう'], [2, 'おととい']].map(function (o) { return '<button class="pick ' + ((V.manDay == null ? 1 : V.manDay) === o[0] ? 'on' : '') + '" data-act="manDay" data-v="' + o[0] + '">' + o[1] + '</button>'; }).join('') + '</div></div>';
     h += '<button class="btn primary big" data-act="suggest">献立を考える</button>';
     h += '<div id="results">' + renderResults() + '</div>';
     h += '<div class="card"><h2>もっと自由に考えたいとき</h2><p class="small">このアプリはAIを使わずに、食材・調理法・味付けを組み合わせて考えています。もっと自由な献立にしたい日は、条件をまとめた文を無料版のChatGPTなどに貼って使えます（送るのは料理の条件だけで、名前などは入りません）。</p><button class="btn" data-act="aiPrompt">条件をまとめた文を作る</button><p class="muted">ChatGPTの答えは「レシピ」タブの「レシピを登録」から貼り付けて保存できます。</p></div>';
@@ -339,7 +342,8 @@
   // ---------- きろく ----------
   function renderLog() {
     var h = '<header class="top wrap"><h1>きろく</h1></header><main class="wrap">';
-    h += '<div class="card"><h2>最近作った料理</h2><p class="muted">7日以内に作った料理と似たものは、提案に出にくくなります。「好みではなかった」を押した料理は出なくなり、似た味付けも出にくくなります。</p>';
+    h += '<button class="btn" data-act="manNew" style="width:100%;margin-top:4px">＋ アプリ以外で作った料理を記録</button>';
+    h += '<div class="card"><h2>最近作った料理</h2><p class="muted">3日以内に作った料理と同じ味付けや、7日以内に作った料理と似たものは、提案に出にくくなります。「好みではなかった」を押した料理は出なくなり、似た味付けも出にくくなります。</p>';
     if (!S.history.length) h += '<div class="empty">まだ記録がありません。レシピの「作った！」を押すと記録されます。</div>';
     else {
       var items = S.history.map(function (x, i) { return { x: x, i: i }; }).reverse().slice(0, 60);
@@ -347,7 +351,9 @@
       items.forEach(function (o) {
         var x = o.x;
         if (x.date !== lastDate) { h += '<h3>' + dateLabel(x.date) + '</h3>'; lastDate = x.date; }
-        h += '<div class="toggle" style="align-items:flex-start"><div class="grow"><button style="border:0;background:none;padding:0;text-align:left;font-weight:600" data-act="openKey" data-key="' + esc(x.key) + '">' + esc(x.name) + '</button> <span class="muted">' + (SLOT[x.slot] || '') + '</span>' + rateButtons(o.i, x.rating) + '</div><button class="iconbtn" data-act="rmHist" data-i="' + o.i + '" aria-label="記録を消す" style="width:40px;height:40px;font-size:16px">' + ICON.close + '</button></div>';
+        var nameBtn = x.manual ? '<button style="border:0;background:none;padding:0;text-align:left;font-weight:600" data-act="manEdit" data-i="' + o.i + '">' + esc(x.name) + '</button> <span class="tag">アプリ外</span><span class="muted small">' + esc(E.baseLabel(x.base) + '・' + E.mainLabel(x.mainId)) + '</span>'
+          : '<button style="border:0;background:none;padding:0;text-align:left;font-weight:600" data-act="openKey" data-key="' + esc(x.key) + '">' + esc(x.name) + '</button> <span class="muted">' + (SLOT[x.slot] || '') + '</span>';
+        h += '<div class="toggle" style="align-items:flex-start"><div class="grow">' + nameBtn + (x.manual ? '' : rateButtons(o.i, x.rating)) + '</div><button class="iconbtn" data-act="rmHist" data-i="' + o.i + '" aria-label="記録を消す" style="width:40px;height:40px;font-size:16px">' + ICON.close + '</button></div>';
       });
     }
     h += '</div></main>';
@@ -361,7 +367,7 @@
   function addHistory(r) {
     var today = todayStr();
     var exist = -1; V.lastAddNew = false;
-    S.history.forEach(function (x, i) { if (x.key === r.key && x.date === today) exist = i; });
+    S.history.forEach(function (x, i) { if (x.key === r.key && x.date === today && !x.manual) exist = i; });
     if (exist < 0) {
       S.history.push({ key: r.key, name: r.name, slot: r.slot, date: today, rating: null, mainId: r.mainId, base: r.base, amakara: !!r.amakara, genre: r.genre });
       if (S.history.length > 400) S.history = S.history.slice(-400);
@@ -369,6 +375,36 @@
     }
     save();
     return exist;
+  }
+
+  // ---------- アプリ以外で作った料理 ----------
+  function dateMinus(n) { var d = new Date(); d.setDate(d.getDate() - n); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+  function addManual(name, day) {
+    name = String(name || '').trim(); if (!name) return -1;
+    var g = E.guessDish(name);
+    S.history.push({ key: g.classicKey || ('manual|' + uid()), name: name, slot: g.slot || 'main', date: dateMinus(day), rating: null, mainId: g.mainId, base: g.base, amakara: g.amakara, genre: g.genre, manual: true });
+    S.history.sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
+    save();
+    var idx = -1; S.history.forEach(function (x, i) { if (x.manual && x.name === name && x.date === dateMinus(day)) idx = i; });
+    return idx;
+  }
+  function openManual(i) {
+    var x = i != null && i >= 0 ? S.history[i] : null;
+    var cur = x || { name: '', date: dateMinus(V.manDay == null ? 1 : V.manDay), base: 'other', mainId: '' };
+    var dayOf = function (d) { for (var k = 0; k < 7; k++) if (dateMinus(k) === d) return k; return -1; };
+    V.manEdit = { i: x ? i : -1, name: cur.name, origName: cur.name, origBase: cur.base || 'other', origMain: cur.mainId || '', baseTouched: false, mainTouched: false, day: dayOf(cur.date), date: cur.date, base: cur.base || 'other', mainId: E.mainChip(cur.mainId) };
+    renderManual();
+  }
+  function renderManual() {
+    var m = V.manEdit; var old = $('#modal'); if (old) old.remove();
+    var h = '<div class="modal" id="modal" data-act="modalBg"><div class="box"><h2>アプリ以外で作った料理</h2>';
+    h += '<label class="field">料理名</label><div class="row"><input class="input grow" id="manName" value="' + esc(m.name) + '" placeholder="例：鮭の塩焼き" autocomplete="off"><button class="btn small" data-act="manGuess">名前から判断</button></div>';
+    h += '<label class="field">いつ</label><div class="chips">' + [[0, '今日'], [1, 'きのう'], [2, 'おととい']].map(function (o) { return '<button class="pick ' + (m.day === o[0] ? 'on' : '') + '" data-act="manSetDay" data-v="' + o[0] + '">' + o[1] + '</button>'; }).join('') + (m.day < 0 || m.day > 2 ? '<span class="muted">' + esc(dateLabel(m.date)) + '</span>' : '') + '</div>';
+    h += '<label class="field">味付け</label><div class="chips">' + E.baseList().map(function (b) { return '<button class="pick ' + (m.base === b[0] ? 'on' : '') + '" data-act="manBase" data-v="' + b[0] + '">' + esc(b[1]) + '</button>'; }).join('') + '</div>';
+    var keepMain = !m.mainTouched && m.origMain && !E.mainChip(m.origMain) ? '<p class="muted" style="margin:0 0 6px">いまの主役：' + esc(E.mainLabel(m.origMain)) + '（変えないときは、このままでOK）</p>' : '';
+    h += '<label class="field">主役</label>' + keepMain + '<div class="chips">' + E.mainList().map(function (b) { return '<button class="pick ' + ((m.mainId || '') === b[0] ? 'on' : '') + '" data-act="manMain" data-v="' + b[0] + '">' + esc(b[1]) + '</button>'; }).join('') + '</div>';
+    h += '<div class="row" style="margin-top:14px"><button class="btn primary" data-act="manSave">保存</button>' + (m.i >= 0 ? '<button class="btn danger" data-act="manDel">この記録を消す</button>' : '') + '<button class="btn ghost" data-act="closeModal">閉じる</button></div></div></div>';
+    layer.insertAdjacentHTML('beforeend', h);
   }
 
   // ---------- せってい ----------
@@ -810,6 +846,35 @@
         if (S.prefs[list].indexOf(aid) < 0) S.prefs[list].push(aid);
         save(); render(); break;
       }
+      case 'manDay': V.manDay = +A.v; render(); break;
+      case 'manAdd': {
+        var mi = $('#manIn'); var nm = mi ? mi.value.trim() : ''; if (!nm) { toast('料理名を入れてください'); break; }
+        var day = V.manDay == null ? 1 : V.manDay; var idxM = addManual(nm, day); var xm = S.history[idxM];
+        render();
+        actionToast('「' + nm + '」を' + ['今日', 'きのう', 'おととい'][day] + 'の料理（' + E.baseLabel(xm.base) + '・' + E.mainLabel(xm.mainId) + '）として記録しました', '直す', function () { openManual(idxM); });
+        break;
+      }
+      case 'manNew': openManual(null); break;
+      case 'manEdit': openManual(+A.i); break;
+      case 'manGuess': { var gm = E.guessDish(($('#manName') || {}).value || ''); V.manEdit.name = ($('#manName') || {}).value || ''; V.manEdit.base = gm.base; V.manEdit.mainId = E.mainChip(gm.mainId); V.manEdit.guessMain = gm.mainId; V.manEdit.baseTouched = true; V.manEdit.mainTouched = true; renderManual(); if (!gm.guessed) toast('名前から判断できませんでした。下のボタンで選んでください', 3000); break; }
+      case 'manSetDay': V.manEdit.name = ($('#manName') || {}).value || V.manEdit.name; V.manEdit.day = +A.v; V.manEdit.date = dateMinus(+A.v); renderManual(); break;
+      case 'manBase': V.manEdit.name = ($('#manName') || {}).value || V.manEdit.name; V.manEdit.base = A.v; V.manEdit.baseTouched = true; renderManual(); break;
+      case 'manMain': V.manEdit.name = ($('#manName') || {}).value || V.manEdit.name; V.manEdit.mainId = A.v; V.manEdit.guessMain = null; V.manEdit.mainTouched = true; renderManual(); break;
+      case 'manSave': {
+        var me = V.manEdit; var nm2 = (($('#manName') || {}).value || '').trim(); if (!nm2) { toast('料理名を入れてください'); break; }
+        var g2 = E.guessDish(nm2); var gk2 = g2.classicKey;
+        var renamed = me.i < 0 || nm2 !== me.origName;
+        // ボタンを触っていない方は、名前が新しい（変わった）なら名前から判断、同じなら元の記録のまま
+        if (!me.baseTouched) me.base = renamed ? g2.base : me.origBase;
+        if (!me.mainTouched) me.mainId = renamed ? g2.mainId : me.origMain;
+        else if (me.guessMain && E.mainChip(me.guessMain) === me.mainId) me.mainId = me.guessMain;
+        var rec = { key: (me.i >= 0 && S.history[me.i].key && !/^classic\|/.test(S.history[me.i].key) ? S.history[me.i].key : null) || gk2 || ('manual|' + uid()), name: nm2, slot: E.guessDish(nm2).slot || 'main', date: me.date, rating: me.i >= 0 ? S.history[me.i].rating : null, mainId: me.mainId || '', base: me.base, amakara: me.base === 'shoyu_sweet', genre: ({ chinese: '中', spicy: '中', western: '洋', cream: '洋', tomato: '洋', curry: '洋', butter: '洋' }[me.base] || '和'), manual: true };
+        if (gk2) rec.key = gk2;
+        if (me.i >= 0) S.history[me.i] = rec; else S.history.push(rec);
+        S.history.sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
+        save(); closeModal(); render(); toast('記録しました（' + E.baseLabel(rec.base) + '・' + E.mainLabel(rec.mainId) + '）', 3000); break;
+      }
+      case 'manDel': if (confirm('この記録を消しますか？')) { S.history.splice(V.manEdit.i, 1); save(); closeModal(); render(); } break;
       case 'rmAvoidWord': S.prefs.avoidWords.splice(+A.i, 1); save(); render(); break;
       case 'rmAvoid': S.prefs[A.list] = S.prefs[A.list].filter(function (x) { return x !== A.id; }); save(); render(); break;
       case 'salt': S.prefs.saltLevel = A.v; save(); render(); break;
@@ -855,6 +920,7 @@
     var el = ev.target;
     if (el.id === 'ingIn' && el.value.trim()) { ev.preventDefault(); addIngredients(el.value); render(); var i2 = $('#ingIn'); if (i2) i2.focus(); }
     if (el.id === 'helpIn' && el.value.trim()) { ev.preventDefault(); askHelpText(el.value); }
+    if (el.id === 'manIn' && el.value.trim()) { ev.preventDefault(); var bm = document.querySelector('[data-act="manAdd"]'); if (bm) bm.click(); }
     if ((el.id === 'avoidIn' || el.id === 'kidAvoidIn') && el.value.trim()) { ev.preventDefault(); var b = el.parentNode.querySelector('[data-act="addAvoid"]'); if (b) b.click(); }
   });
   document.addEventListener('visibilitychange', function () {
