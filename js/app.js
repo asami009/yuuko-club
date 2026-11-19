@@ -137,7 +137,7 @@
       '</div><h3>調理時間（1品あたり）</h3><div class="chips">' +
       [[null, 'こだわらない'], [20, '20分以内'], [30, '30分以内'], [45, '45分以内']].map(function (o) { return '<button class="pick ' + (S.maxMin === o[0] ? 'on' : '') + '" data-act="maxMin" data-v="' + (o[0] || '') + '">' + o[1] + '</button>'; }).join('') + '</div></div>';
     h += '<div class="card"><h2 style="margin-bottom:4px">アプリ以外で作った日は？</h2><p class="muted" style="margin:0 0 8px">料理名を入れておくと、同じ味付けが続かないようにします（外食やお惣菜もOK）</p>' +
-      '<div class="row"><input class="input grow" id="manIn" placeholder="例：鮭の塩焼き" autocomplete="off" enterkeyhint="done"><button class="btn" data-act="manAdd">記録</button></div>' +
+      '<div class="row"><input class="input grow" id="manIn" placeholder="例：鮭の塩焼き" autocomplete="off" enterkeyhint="done" value="' + esc(V.manDraft || '') + '"><button class="btn" data-act="manAdd">記録</button></div>' +
       '<div class="chips" style="margin-top:8px">' + [[0, '今日'], [1, 'きのう'], [2, 'おととい']].map(function (o) { return '<button class="pick ' + ((V.manDay == null ? 1 : V.manDay) === o[0] ? 'on' : '') + '" data-act="manDay" data-v="' + o[0] + '">' + o[1] + '</button>'; }).join('') + '</div></div>';
     h += '<button class="btn primary big" data-act="suggest">献立を考える</button>';
     h += '<div id="results">' + renderResults() + '</div>';
@@ -148,7 +148,7 @@
   function renderFridge() {
     var f = S.fridge;
     var h = '<div class="card"><h2>冷蔵庫にあるもの</h2>';
-    h += '<div class="row"><input id="ingIn" class="input grow" placeholder="例：豚こま 300g、キャベツ 半分、卵" enterkeyhint="done" autocomplete="off"><button class="btn primary" data-act="addIng">追加</button></div><div class="sugg" id="sugg"></div>';
+    h += '<div class="row"><input id="ingIn" class="input grow" placeholder="例：豚こま 300g、キャベツ 半分、卵" value="' + esc(V.ingDraft || '') + '" enterkeyhint="done" autocomplete="off"><button class="btn primary" data-act="addIng">追加</button></div><div class="sugg" id="sugg"></div>';
     if (f.items.length || f.unknown.length) {
       h += '<div class="chips" style="margin-top:12px">' + f.items.map(function (id) {
         var it = E.ing(id); var st = f.starred.indexOf(id) >= 0;
@@ -750,12 +750,13 @@
       case 'mode': S.mode = A.v; save(); V.results = null; render(); break;
       case 'style': S.style = A.v; save(); render(); break;
       case 'maxMin': S.maxMin = A.v ? parseInt(A.v, 10) : null; save(); render(); break;
-      case 'addIng': { var inp = $('#ingIn'); if (inp && inp.value.trim()) { addIngredients(inp.value); render(); var i2 = $('#ingIn'); if (i2) i2.focus(); } break; }
+      case 'addIng': { var inp = $('#ingIn'); if (inp && inp.value.trim()) { addIngredients(inp.value); V.ingDraft = ''; render(); var i2 = $('#ingIn'); if (i2) i2.focus(); } break; }
       case 'sugg': {
         var id0 = A.id; var inp0 = $('#ingIn');
         var rest0 = inp0 ? splitItems(inp0.value) : []; var lastW = rest0.length ? rest0[rest0.length - 1] : '';
+        if (rest0.length > 1) addIngredients(rest0.slice(0, -1).join('、'));   // 前に打っていた食材も一緒に追加（追加し忘れを防ぐ）
         if (S.fridge.items.indexOf(id0) < 0) { S.fridge.items.push(id0); S.fridge.amounts = S.fridge.amounts || {}; var g0 = E.parseAmount(lastW, id0); S.fridge.amounts[id0] = g0 != null ? g0 : E.defaultAmount(id0); }
-        save(); render(); var i3 = $('#ingIn'); if (i3) i3.focus(); break;
+        V.ingDraft = ''; save(); render(); var i3 = $('#ingIn'); if (i3) i3.focus(); break;
       }
       case 'toggleIng': { var id1 = A.id, ix = S.fridge.items.indexOf(id1); S.fridge.amounts = S.fridge.amounts || {}; if (ix >= 0) { S.fridge.items.splice(ix, 1); S.fridge.starred = S.fridge.starred.filter(function (x) { return x !== id1; }); delete S.fridge.amounts[id1]; } else { S.fridge.items.push(id1); S.fridge.amounts[id1] = E.defaultAmount(id1); } save(); var y = window.scrollY; render(); window.scrollTo(0, y); break; }
       case 'amt': openAmount(A.id); break;
@@ -846,10 +847,10 @@
         if (S.prefs[list].indexOf(aid) < 0) S.prefs[list].push(aid);
         save(); render(); break;
       }
-      case 'manDay': V.manDay = +A.v; render(); break;
+      case 'manDay': V.manDay = +A.v; Array.prototype.forEach.call(document.querySelectorAll('[data-act="manDay"]'), function (b) { b.classList.toggle('on', +b.getAttribute('data-v') === V.manDay); }); break;
       case 'manAdd': {
         var mi = $('#manIn'); var nm = mi ? mi.value.trim() : ''; if (!nm) { toast('料理名を入れてください'); break; }
-        var day = V.manDay == null ? 1 : V.manDay; var idxM = addManual(nm, day); var xm = S.history[idxM];
+        var day = V.manDay == null ? 1 : V.manDay; var idxM = addManual(nm, day); var xm = S.history[idxM]; V.manDraft = '';
         render();
         actionToast('「' + nm + '」を' + ['今日', 'きのう', 'おととい'][day] + 'の料理（' + E.baseLabel(xm.base) + '・' + E.mainLabel(xm.mainId) + '）として記録しました', '直す', function () { openManual(idxM); });
         break;
@@ -895,7 +896,7 @@
       }
       case 'delGkey': if (confirm('Geminiのキーをこのスマホから消しますか？')) { lsSet(GKEY, ''); lsSet(GMODEL, ''); render(); toast('キーを消しました'); } break;
       case 'testGkey': toast('確認しています…'); geminiAsk('動作確認です。「つながりました」とだけ返してください。').then(function (res) { toast('つながりました（' + res.model + '）', 3500); }, function (e) { alert(geminiError(e)); }); break;
-      case 'resetAll': if (confirm('記録・お気に入り・登録したレシピ・設定をすべて消します。元に戻せません。よろしいですか？')) { try { localStorage.removeItem(KEY); localStorage.removeItem(GKEY); localStorage.removeItem(GMODEL); } catch (e) { /* なにもしない */ } S = defaults(); V.results = null; save(); setTab('home'); toast('すべて消しました'); } break;
+      case 'resetAll': if (confirm('記録・お気に入り・登録したレシピ・設定をすべて消します。元に戻せません。よろしいですか？')) { try { localStorage.removeItem(KEY); localStorage.removeItem(GKEY); localStorage.removeItem(GMODEL); } catch (e) { /* なにもしない */ } S = defaults(); V.results = null; V.manDraft = ''; V.ingDraft = ''; save(); setTab('home'); toast('すべて消しました'); } break;
     }
   });
   document.addEventListener('change', function (ev) {
@@ -907,7 +908,9 @@
   });
   document.addEventListener('input', function (ev) {
     var el = ev.target;
+    if (el.id === 'manIn') V.manDraft = el.value;
     if (el.id === 'ingIn') {
+      V.ingDraft = el.value;
       var words = el.value.split(/[、,，\s　]+/); var last = words[words.length - 1];
       var box = $('#sugg'); if (!box) return;
       var ids = last ? E.suggestNames(last, 8) : [];
@@ -918,7 +921,7 @@
   document.addEventListener('keydown', function (ev) {
     if (ev.key !== 'Enter' || ev.isComposing) return;
     var el = ev.target;
-    if (el.id === 'ingIn' && el.value.trim()) { ev.preventDefault(); addIngredients(el.value); render(); var i2 = $('#ingIn'); if (i2) i2.focus(); }
+    if (el.id === 'ingIn' && el.value.trim()) { ev.preventDefault(); addIngredients(el.value); V.ingDraft = ''; render(); var i2 = $('#ingIn'); if (i2) i2.focus(); }
     if (el.id === 'helpIn' && el.value.trim()) { ev.preventDefault(); askHelpText(el.value); }
     if (el.id === 'manIn' && el.value.trim()) { ev.preventDefault(); var bm = document.querySelector('[data-act="manAdd"]'); if (bm) bm.click(); }
     if ((el.id === 'avoidIn' || el.id === 'kidAvoidIn') && el.value.trim()) { ev.preventDefault(); var b = el.parentNode.querySelector('[data-act="addAvoid"]'); if (b) b.click(); }

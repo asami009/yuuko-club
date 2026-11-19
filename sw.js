@@ -1,6 +1,6 @@
 /* 一度開いたら電波がなくても使えるようにする仕組み。ファイルを直したら VERSION の数字を上げる。
    電波があるときは毎回新しい版がないか確かめ、なければ保存しておいた物を使う */
-var VERSION = 'yuuhan-v5';
+var VERSION = 'yuuhan-v6';
 var FILES = ['./', 'index.html', 'style.css', 'js/engine.js', 'js/plate.js', 'js/app.js', 'manifest.webmanifest',
   'data/ingredients.json', 'data/seasonings.json', 'data/sauces.json', 'data/classics.json', 'data/help.json',
   'icons/icon.svg', 'icons/icon-180.png', 'icons/icon-192.png', 'icons/icon-512.png'];

@@ -95,7 +95,7 @@ robots.txt            検索サイトに載せないための設定
 
 ### 直したファイルを公開し直すとき
 
-- `sw.js` の `var VERSION = 'yuuhan-v5';` の数字を `yuuhan-v6` のように1つ上げてから、リポジトリの画面の「Add file」→「Upload files」で、直したファイルを上書きアップロードします（数字を上げないと、スマホに古い画面が残ることがあります）
+- `sw.js` の `var VERSION = 'yuuhan-v6';` の数字を `yuuhan-v7` のように1つ上げてから、リポジトリの画面の「Add file」→「Upload files」で、直したファイルを上書きアップロードします（数字を上げないと、スマホに古い画面が残ることがあります）
 
 ### Netlify でもOK
 
